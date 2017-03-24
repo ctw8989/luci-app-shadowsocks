@@ -147,6 +147,7 @@ rules() {
 
 start_redir() {
 	gen_config_file $1
+	command -v $ss_redir_cmd >/dev/null 2>&1 || return 1
 	local processors=$(grep processor /proc/cpuinfo | wc -l)
 	local processes=$(uci_get_by_type transparent_proxy processes 1)
 	[ $processes -gt $processors ] && processes=$processors
@@ -160,7 +161,6 @@ start_redir() {
 }
 
 ss_redir() {
-	command -v ss-redir ssr-redir | grep -q "redir" || return 1
 	local main_server=$(uci_get_by_type transparent_proxy main_server)
 	valid_server $main_server || return 1
 	local udp_relay_server=$(uci_get_by_type transparent_proxy udp_relay_server)
@@ -177,6 +177,7 @@ ss_redir() {
 
 start_local() {
 	gen_config_file $1
+	command $ss_local_cmd >/dev/null 2>&1 || return 0
 	local processors=$(grep processor /proc/cpuinfo | wc -l)
 	local processes=$(uci_get_by_type socks5_proxy processes 1)
 	[ $processes -gt $processors ] && processes=$processors
@@ -190,13 +191,13 @@ start_local() {
 }
 
 ss_local() {
-	command -v ss-local ssr-local | grep -q "local" || return 0
 	local server=$(uci_get_by_type socks5_proxy server)
 	valid_server $server && start_local $server
 }
 
 start_tunnel() {
 	gen_config_file $1
+	command -v $ss_tunnel_cmd >/dev/null 2>&1 || return 0
 	local processors=$(grep processor /proc/cpuinfo | wc -l)
 	local processes=$(uci_get_by_type port_forward processes 1)
 	[ $processes -gt $processors ] && processes=$processors
@@ -211,7 +212,6 @@ start_tunnel() {
 }
 
 ss_tunnel() {
-	command -v ss-tunnel ssr-tunnel | grep -q "tunnel" || return 0
 	local server=$(uci_get_by_type port_forward server)
 	valid_server $server && start_tunnel $server
 }
