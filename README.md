@@ -3,6 +3,12 @@ OpenWrt LuCI for Shadowsocks-libev
 
 [![Latest release][release_badge]][release_url]
 
+修改说明
+---
+
+本修改版同时支持 [shadowsocks-libev][openwrt-shadowsocks] 和 [shadowsocksr-libev](https://github.com/kuoruan/lede-packages/tree/master/net/shadowsocksr-libev)
+请同时安装两者以获得完整支持
+
 简介
 ---
 
@@ -46,7 +52,7 @@ OpenWrt LuCI for Shadowsocks-libev
 可执行文件可通过安装 [openwrt-shadowsocks][openwrt-shadowsocks] 中提供的 `shadowsocks-libev` 获得.  
 只有当文件存在时, 相应的功能才可被使用, 并显示相应的 LuCI 设置界面.  
 
- 可执行文件  | 可选 | 功能        | TCP协议 | UDP协议 
+ 可执行文件  | 可选 | 功能        | TCP协议 | UDP协议
  ------------|------|-------------|---------|-----------------------------------
  `ss-redir`  | 是   | 透明代理    | 支持    | 需安装 `iptables-mod-tproxy`, `ip`
  `ss-local`  | 是   | SOCKS5 代理 | 支持    | 支持
