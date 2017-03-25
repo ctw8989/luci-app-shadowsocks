@@ -1,5 +1,5 @@
 -- Copyright (C) 2016-2017 Jian Chang <aa65535@live.com>
--- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-03-24
+-- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-03-25
 -- Licensed to the public under the GNU General Public License v3.
 
 local m, s, o
@@ -90,9 +90,10 @@ o = s:option(Value, "password", translate("Password"))
 o.password = true
 
 o = s:option(Value, "key", translate("Directly Key"))
+o:depends("ssr_server", 0)
 
 o = s:option(ListValue, "encrypt_method", translate("Encrypt Method"))
-for _, v in ipairs(encrypt_methods) do o:value(v, v:upper()) end
+for _, v in ipairs(encrypt_methods) do o:value(v) end
 o.rmempty = false
 
 o = s:option(Value, "plugin", translate("Plugin Name"))
