@@ -17,8 +17,8 @@ function index()
 		cbi("shadowsocks/general"),
 		_("General Settings"), 10).leaf = true
 
-		entry({"admin", "services", "shadowsocks", "status"},
-			call("action_status")).leaf = true
+	entry({"admin", "services", "shadowsocks", "status"},
+		call("action_status")).leaf = true
 
 	entry({"admin", "services", "shadowsocks", "servers"},
 		arcombine(cbi("shadowsocks/servers"), cbi("shadowsocks/servers-details")),

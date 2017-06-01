@@ -7,6 +7,7 @@ local shadowsocks = "shadowsocks"
 local sid = arg[1]
 local sys = luci.sys
 local encrypt_methods = {
+	"none",
 	"rc4-md5",
 	"aes-128-cfb",
 	"aes-192-cfb",

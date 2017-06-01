@@ -151,13 +151,6 @@ if has_tunnel then
 	o.default = 1492
 	o.datatype = "range(296,9200)"
 	o.rmempty = false
-
-	if processors > 1 then
-		o = s:option(ListValue, "processes", translate("Number of Processes"))
-		for i = 1, processors do o:value(i) end
-		o.default = 1
-		o.rmempty = false
-	end
 end
 
 return m
