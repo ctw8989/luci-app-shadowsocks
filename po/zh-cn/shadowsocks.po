@@ -91,9 +91,6 @@ msgstr "未运行"
 msgid "NULL - As Global Proxy"
 msgstr "留空 - 作为全局代理"
 
-msgid "Number of Processes"
-msgstr "进程数"
-
 msgid "OBFS"
 msgstr "混淆"
 
