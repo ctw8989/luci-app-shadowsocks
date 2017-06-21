@@ -90,7 +90,7 @@ o.password = true
 o = s:option(Value, "key", translate("Directly Key"))
 o:depends("ssr_server", 0)
 
-o = s:option(ListValue, "encrypt_method", translate("Encrypt Method"))
+o = s:option(Value, "encrypt_method", translate("Encrypt Method"))
 for _, v in ipairs(encrypt_methods) do o:value(v) end
 o.rmempty = false
 
@@ -102,17 +102,15 @@ o = s:option(Value, "plugin_opts", translate("Plugin Arguments"))
 o.placeholder = "eg: obfs=http;obfs-host=www.bing.com"
 o:depends("ssr_server", 0)
 
-o = s:option(ListValue, "protocol", translate("Protocol"))
+o = s:option(Value, "protocol", translate("Protocol"))
 for _, v in ipairs(protocols) do o:value(v) end
-o.placeholder = "origin"
 o:depends("ssr_server", 1)
 
 o = s:option(Value, "protocol_param", translate("Protocol Param"))
 o:depends("ssr_server", 1)
 
-o = s:option(ListValue, "obfs", translate("OBFS"))
+o = s:option(Value, "obfs", translate("OBFS"))
 for _, v in ipairs(obfs_list) do o:value(v) end
-o.placeholder = "plain"
 o:depends("ssr_server", 1)
 
 o = s:option(Value, "obfs_param", translate("OBFS Param"))
