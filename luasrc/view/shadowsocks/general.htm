@@ -1,5 +1,6 @@
 <%#
  Copyright (C) 2017 Jian Chang <aa65535@live.com>
+ Modified By Xingwang Liao <kuoruan@gmail.com> 2017-06-21
  Licensed to the public under the GNU General Public License v3.
 -%>
 
@@ -7,16 +8,33 @@
 
 <script type="text/javascript">//<![CDATA[
 	(function() {
-		var _redir_status = document.getElementById('_redir_status');
-		var _local_status = document.getElementById('_local_status');
-		var _tunnel_status = document.getElementById('_tunnel_status');
+		var _redir_status = document.getElementById('_redir_status'),
+			_local_status = document.getElementById('_local_status'),
+			_tunnel_status = document.getElementById('_tunnel_status');
 		XHR.poll(5, '<%= luci.dispatcher.build_url("admin", "services", "shadowsocks", "status") %>', null, function(x, status) {
-			if (_redir_status)
-				_redir_status.textContent = status.ss_redir ? '<%:RUNNING%>' : '<%:NOT RUNNING%>';
-			if (_local_status)
-				_local_status.textContent = status.ss_local ? '<%:RUNNING%>' : '<%:NOT RUNNING%>';
-			if (_tunnel_status)
-				_tunnel_status.textContent = status.ss_tunnel ? '<%:RUNNING%>' : '<%:NOT RUNNING%>';
+			if (_redir_status) {
+				if (status.ss_redir || status.ssr_redir) {
+					_redir_status.textContent = '<%:RUNNING%>'
+				} else {
+					_redir_status.textContent = '<%:NOT RUNNING%>'
+				}
+			}
+
+			if (_local_status) {
+				if (status.ss_local || status.ssr_local) {
+					_local_status.textContent = '<%:RUNNING%>'
+				} else {
+					_local_status.textContent = '<%:NOT RUNNING%>'
+				}
+			}
+
+			if (_tunnel_status) {
+				if (status.ss_tunnel || status.ssr_tunnel) {
+					_tunnel_status.textContent = '<%:RUNNING%>'
+				} else {
+					_tunnel_status.textContent = '<%:NOT RUNNING%>'
+				}
+			}
 		});
 	}());
 //]]></script>

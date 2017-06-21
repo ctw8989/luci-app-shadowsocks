@@ -1,5 +1,5 @@
 -- Copyright (C) 2014-2017 Jian Chang <aa65535@live.com>
--- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-03-24
+-- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-06-21
 -- Licensed to the public under the GNU General Public License v3.
 
 module("luci.controller.shadowsocks", package.seeall)
@@ -36,8 +36,11 @@ end
 function action_status()
 	luci.http.prepare_content("application/json")
 	luci.http.write_json({
-		ss_redir = is_running("ss-redir ssr-redir"),
-		ss_local = is_running("ss-local ssr-local"),
-		ss_tunnel = is_running("ss-tunnel ssr-tunnel")
+		ss_redir = is_running("ss-redir"),
+		ss_local = is_running("ss-local"),
+		ss_tunnel = is_running("ss-tunnel"),
+		ssr_redir = is_running("ssr-redir"),
+		ssr_local = is_running("ssr-local"),
+		ssr_tunnel = is_running("ssr-tunnel")
 	})
 end

@@ -1,10 +1,11 @@
 -- Copyright (C) 2016-2017 Jian Chang <aa65535@live.com>
+-- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-06-21
 -- Licensed to the public under the GNU General Public License v3.
 
 local m, s, o
 local shadowsocks = "shadowsocks"
-local uci = luci.model.uci.cursor()
-local nwm = require("luci.model.network").init()
+local uci = require "luci.model.uci".cursor()
+local nwm = require "luci.model.network".init()
 local chnroute = uci:get_first("chinadns", "chinadns", "chnroute")
 local lan_ifaces = {}
 

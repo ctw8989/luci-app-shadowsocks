@@ -89,7 +89,7 @@ ipt_nat() {
 
 ipt_mangle() {
 	[ -n "$TPROXY" ] || return 0
-	if !(lsmod | grep -q TPROXY && command -v ip >/dev/null); then
+	if ! (lsmod | grep -q TPROXY && command -v ip >/dev/null); then
 		loger 4 "TPROXY or ip not found."
 		return 0
 	fi

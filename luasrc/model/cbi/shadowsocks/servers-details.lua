@@ -1,14 +1,16 @@
 -- Copyright (C) 2016-2017 Jian Chang <aa65535@live.com>
--- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-03-25
+-- Modified By Xingwang Liao <kuoruan@gmail.com> 2017-06-21
 -- Licensed to the public under the GNU General Public License v3.
 
 local m, s, o
 local shadowsocks = "shadowsocks"
 local sid = arg[1]
-local sys = luci.sys
 local encrypt_methods = {
 	"none",
+	"table",
+	"rc4",
 	"rc4-md5",
+	"rc4-md5-6",
 	"aes-128-cfb",
 	"aes-192-cfb",
 	"aes-256-cfb",
@@ -22,33 +24,33 @@ local encrypt_methods = {
 	"camellia-192-cfb",
 	"camellia-256-cfb",
 	"bf-cfb",
+	"cast5-cfb",
+	"des-cfb",
+	"idea-cfb",
+	"rc2-cfb",
+	"seed-cfb",
 	"salsa20",
 	"chacha20",
 	"chacha20-ietf",
 	"chacha20-ietf-poly1305",
 	"xchacha20-ietf-poly1305",
 }
+
 local protocols = {
 	"origin",
-	"verify_simple",
-	"verify_sha1",
-	"auth_simple",
-	"auth_sha1",
-	"auth_sha1_v2",
+	"verify_deflate",
 	"auth_sha1_v4",
 	"auth_aes128_md5",
-	"auth_aes128_sha1"
+	"auth_aes128_sha1",
+	"auth_chain_a"
 }
 local obfs_list = {
 	"plain",
 	"http_simple",
+	"tls_simple",
 	"http_post",
 	"tls1.2_ticket_auth"
 }
-
-local function support_fast_open()
-	return sys.exec("cat /proc/sys/net/ipv4/tcp_fastopen 2>/dev/null"):trim() == "3"
-end
 
 m = Map(shadowsocks, "%s - %s" %{translate("ShadowSocks"), translate("Edit Server")})
 m.redirect = luci.dispatcher.build_url("admin/services/shadowsocks/servers")
@@ -68,11 +70,6 @@ o.rmempty = true
 
 o = s:option(Flag, "ssr_server", translate("SSR Server"))
 o.rmempty = false
-
-if support_fast_open() then
-	o = s:option(Flag, "fast_open", translate("TCP Fast Open"))
-	o.rmempty = false
-end
 
 o = s:option(Value, "server", translate("Server Address"))
 o.datatype = "ipaddr"
@@ -107,16 +104,16 @@ o:depends("ssr_server", 0)
 
 o = s:option(ListValue, "protocol", translate("Protocol"))
 for _, v in ipairs(protocols) do o:value(v) end
+o.placeholder = "origin"
 o:depends("ssr_server", 1)
-o.rmempty = false
 
 o = s:option(Value, "protocol_param", translate("Protocol Param"))
 o:depends("ssr_server", 1)
 
 o = s:option(ListValue, "obfs", translate("OBFS"))
 for _, v in ipairs(obfs_list) do o:value(v) end
+o.placeholder = "plain"
 o:depends("ssr_server", 1)
-o.rmempty = false
 
 o = s:option(Value, "obfs_param", translate("OBFS Param"))
 o:depends("ssr_server", 1)

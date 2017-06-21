@@ -9,15 +9,15 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-shadowsocks
-PKG_VERSION:=1.6.3
-PKG_RELEASE:=2
+PKG_VERSION:=2.0
+PKG_RELEASE:=1
 
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=Jian Chang <aa65535@live.com>, Xingwang Liao <kuoruan@gmail.com>
 
-LUCI_TITLE:=LuCI support for Shadowsocks{R}
-LUCI_DEPENDS:=+iptables +ipset +ip +iptables-mod-tproxy
+LUCI_TITLE:=LuCI support for Shadowsocks and ShadowsocksR
+LUCI_DEPENDS:=+jshn +iptables +ipset +ip +iptables-mod-tproxy
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/config

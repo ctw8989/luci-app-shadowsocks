@@ -1,7 +1,6 @@
 #!/bin/sh /etc/rc.common
 #
-# Copyright (C) 2014-2017 Jian Chang <aa65535@live.com>
-# Modified By Xingwang Liao <kuoruan@gmail.com> 2017-03-25
+# Copyright (C) 2017 Xingwang Liao <kuoruan@gmail.com>
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -12,246 +11,408 @@ STOP=15
 
 NAME=shadowsocks
 EXTRA_COMMANDS=rules
-CONFIG_FILE=/var/etc/$NAME.json
 
-uci_get_by_name() {
-	local ret=$(uci get $NAME.$1.$2 2>/dev/null)
+SS_RULES=/usr/bin/ss-rules
+SS_PLUGINS=/var/run/ss-plugin
+
+if [ -r /usr/share/libubox/jshn.sh ]; then
+	. /usr/share/libubox/jshn.sh
+else
+	logger -st $NAME -p3 "Please install jshn first."
+	exit 1
+fi
+
+command_exists() {
+	command -v "$@" >/dev/null 2>&1
+}
+
+uci_get_by_type_name(){
+	local ret
+	ret="$(uci -q get ${NAME}.@${1}[-1].${2})"
 	echo ${ret:=$3}
 }
 
-uci_get_by_type() {
-	local ret=$(uci get $NAME.@$1[0].$2 2>/dev/null)
-	echo ${ret:=$3}
-}
-
-uci_bool_by_name() {
-	case "$(uci_get_by_name $1 $2)" in
-		1|on|true|yes|enabled) return 0;;
-	esac
-	return 1
+_print_log() {
+	logger -st $NAME -p3 $1
 }
 
 validate_server() {
-	[ "$(uci get $NAME.$1 2>/dev/null)" = "servers" ]
+	local cfg="$1"
+	[ -n "$cfg" ] && [ "$(uci -q get $NAME.$cfg)" = "servers" ]
 }
 
-has_valid_server() {
-	for server in $@; do
-		validate_server $server && return 0
-	done
-	return 1
-}
-
-get_arg_udp() {
-	local server=$(uci_get_by_type transparent_proxy udp_relay_server)
-	[ "$server" = "same" ] || validate_server $server && echo "-u"
-}
-
-get_arg_out() {
-	case "$(uci_get_by_type access_control self_proxy 1)" in
-		1) echo "-o";;
-		2) echo "-O";;
-	esac
-}
-
-get_arg_tfo() {
-	if [ "3" = "$(cat /proc/sys/net/ipv4/tcp_fastopen 2>/dev/null)" ]; then
-		uci_bool_by_name $1 fast_open && echo "--fast-open"
+_load_config() {
+	if [ -z "$config_loaded" ]; then
+		config_load $NAME
+		config_loaded="true"
 	fi
-}
-
-get_server_ips() {
-	echo $(uci_get_by_name $1 server)
-}
-
-get_lan_hosts() {
-	uci_bool_by_name $1 enable && \
-		echo "$(uci_get_by_name $1 type),$(uci_get_by_name $1 host)"
-}
-
-get_plugin_config() {
-	if [ "$is_ssr" = true ]; then
-		local protocol=$(uci_get_by_name $1 protocol)
-		local protocol_param=$(uci_get_by_name $1 protocol_param)
-		local obfs=$(uci_get_by_name $1 obfs)
-		local obfs_param=$(uci_get_by_name $1 obfs_param)
-		[ -z "$protocol" ] && protocol="origin"
-		[ -z "$obfs" ] && obfs="plain"
-		echo "
-    \"protocol\": \"$protocol\",
-    \"protocol_param\": \"$protocol_param\",
-    \"obfs\": \"$obfs\",
-    \"obfs_param\": \"$obfs_param\","
-	else
-		local plugin=$(uci_get_by_name $1 plugin)
-		local plugin_opts=$(uci_get_by_name $1 plugin_opts)
-		if [ -n "$plugin" -a -n "$plugin_opts" ]; then
-			echo $plugin >>/var/run/ss-plugin
-			echo "
-    \"plugin\": \"$plugin\",
-    \"plugin_opts\": \"$plugin_opts\","
-		fi
-	fi
-}
-
-get_crypto_config() {
-	local key=$(uci_get_by_name $1 key)
-	local password=$(uci_get_by_name $1 password)
-	if [ -n "$key" ]; then
-		echo "\"key\": \"$key\","
-	elif [ -n "$password" ]; then
-		echo "\"password\": \"$password\","
-	else
-		logger -st $NAME -p3 "The password or key is not set."
-	fi
-}
-
-gen_config_file() {
-	local config_file=/var/etc/$NAME.$1.json
-	cat <<-EOF >$CONFIG_FILE
-		{
-		    "server": "$(uci_get_by_name $1 server)",
-		    "server_port": $(uci_get_by_name $1 server_port),
-		    $(get_crypto_config $1)
-		    "method": "$(uci_get_by_name $1 encrypt_method)",
-		    "local_address": "0.0.0.0",$(get_plugin_config $1)
-		    "timeout": $(uci_get_by_name $1 timeout 60),
-		    "reuse_port": true
-		}
-	EOF
-	echo $config_file
 }
 
 start_rules() {
-	config_load $NAME
-	/usr/bin/ss-rules \
-		-s "$(config_foreach get_server_ips servers)" \
-		-l "$(uci_get_by_type transparent_proxy local_port 1234)" \
-		-B "$(uci_get_by_type access_control wan_bp_list)" \
-		-b "$(uci_get_by_type access_control wan_bp_ips)" \
-		-W "$(uci_get_by_type access_control wan_fw_list)" \
-		-w "$(uci_get_by_type access_control wan_fw_ips)" \
-		-I "$(uci_get_by_type access_control lan_ifaces)" \
-		-d "$(uci_get_by_type access_control lan_target)" \
-		-a "$(config_foreach get_lan_hosts lan_hosts)" \
-		-e "$(uci_get_by_type access_control ipt_ext)" \
-		$(get_arg_out) $(get_arg_udp)
+	local self_proxy servers lan_hosts
+	local udp_relay_server extra_params
+
+	servers_cb() {
+		local cfg="$1"
+
+		local server
+
+		config_get server "$cfg" server
+		append servers "$server"
+	}
+
+	lan_hosts_cb() {
+		local cfg="$1"
+
+		local is_enable
+
+		config_get_bool is_enable "$cfg" enable "0"
+
+		if [ "$is_enable" -gt 0 ]; then
+			local host_type host
+
+			config_get host_type "$cfg" type
+			config_get host "$cfg" host
+
+			append lan_hosts "${host_type},${host}"
+		fi
+	}
+
+	config_foreach servers_cb "servers"
+	config_foreach lan_hosts_cb "lan_hosts"
+
+	self_proxy=$(uci_get_by_type_name access_control self_proxy 1)
+	case "$self_proxy" in
+		1)
+			append extra_params "-o"
+			;;
+		2)
+			append extra_params "-O"
+			;;
+	esac
+
+	udp_relay_server=$(uci_get_by_type_name transparent_proxy udp_relay_server)
+	if [ "$udp_relay_server" = "same" ] || validate_server "$udp_relay_server"; then
+		append extra_params "-u"
+	fi
+
+	$SS_RULES \
+		-l "$(uci_get_by_type_name transparent_proxy local_port 1234)" \
+		-B "$(uci_get_by_type_name access_control wan_bp_list)" \
+		-b "$(uci_get_by_type_name access_control wan_bp_ips)" \
+		-W "$(uci_get_by_type_name access_control wan_fw_list)" \
+		-w "$(uci_get_by_type_name access_control wan_fw_ips)" \
+		-I "$(uci_get_by_type_name access_control lan_ifaces)" \
+		-d "$(uci_get_by_type_name access_control lan_target)" \
+		-e "$(uci_get_by_type_name access_control ipt_ext)" \
+		-s "$servers" \
+		-a "$lan_hosts" \
+		"$extra_params"
 }
 
 rules() {
 	pidof ss-redir ssr-redir >/dev/null || return 0
-	start_rules || /usr/bin/ss-rules -f
+	_load_config
+	start_rules || $SS_RULES -f
+}
+
+gen_config_file() {
+	local cfg="$1"
+	local ssr_server="$2"
+
+	local config_file=/var/etc/${NAME}.${cfg}.json
+
+	local server server_port key encrypt_method timeout
+
+	config_get server "$cfg" server
+	config_get server_port "$cfg" server_port
+	config_get encrypt_method "$cfg" encrypt_method
+	config_get timeout "$cfg" timeout 60
+
+	json_init
+	json_add_string "server" "$server"
+	json_add_int "server_port" "$server_port"
+	json_add_string "local_address" "0.0.0.0"
+	json_add_string "method" "$encrypt_method"
+	json_add_int "timeout" "$timeout"
+
+	if [ "$ssr_server" -gt 0 ]; then
+		local password protocol protocol_param obfs obfs_param
+
+		config_get password "$cfg" password
+		config_get protocol "$cfg" protocol "origin"
+		config_get protocol_param "$cfg" protocol_param
+		config_get obfs "$cfg" obfs "plain"
+		config_get obfs_param "$cfg" obfs_param
+
+		if [ -z "$password" ]; then
+			_print_log "The password is not set."
+			return 1
+		fi
+
+		json_add_string "password" "$password"
+		json_add_string "protocol" "$protocol"
+		json_add_string "protocol_param" "$protocol_param"
+		json_add_string "obfs" "$obfs"
+		json_add_string "obfs_param" "$obfs_param"
+	else
+		local password key plugin plugin_opts
+
+		config_get password "$cfg" password
+		config_get key "$cfg" key
+		config_get plugin "$cfg" plugin
+		config_get plugin_opts "$cfg" plugin_opts
+
+		if [ -n "$key" ]; then
+			json_add_string "key" "$key"
+		elif [ -n "$password" ]; then
+			json_add_string "password" "$password"
+		else
+			_print_log "The password or key is not set."
+			return 1
+		fi
+
+		json_add_boolean "reuse_port" "1"
+
+		if [ -n "$plugin" ] && [ -n "$plugin_opts" ]; then
+			echo "$plugin" >>/var/run/ss-plugin
+
+			json_add_string "plugin" "$plugin"
+			json_add_string "plugin_opts" "$plugin_opts"
+		fi
+
+	fi
+
+	json_close_object
+
+	if (json_dump -i > "$config_file"); then
+		echo "$config_file"
+	fi
 }
 
 start_redir() {
-	validate_server $1 || return 0
-	gen_config_file $1
+	local cfg="$1"
 
-	$ss_redir_cmd -c $(gen_config_file $1) $2 $(get_arg_tfo $1) \
-		-l $(uci_get_by_type transparent_proxy local_port 1234) \
-		--mtu $(uci_get_by_type transparent_proxy mtu 1492) \
-		-f /var/run/ss-redir$3-$1.pid
-}
+	local local_port mtu udp_relay_server
 
-ss_redir() {
-	if (uci_bool_by_name $1 ssr_server); then
-		is_ssr=true
-		ss_redir_cmd="ssr-redir"
-	else
-		is_ssr=false
-		ss_redir_cmd="ss-redir"
-	fi
-	command -v $ss_redir_cmd >/dev/null 2>&1 || return 1
+	config_get local_port "$cfg" local_port 1234
+	config_get mtu "$cfg" mtu 1492
+	config_get udp_relay_server "$cfg" udp_relay_server
 
-	local main_server=$(uci_get_by_type transparent_proxy main_server)
-	has_valid_server $main_server || return 1
-	local udp_relay_server=$(uci_get_by_type transparent_proxy udp_relay_server)
-	if [ "$udp_relay_server" = "same" ]; then
-		for server in $main_server; do
-			start_redir $server -u
-		done
-	else
-		for server in $main_server; do
-			start_redir $server
-		done
-		for server in $udp_relay_server; do
-			start_redir $server -U -udp
-		done
-	fi
+	start_instance() {
+		local server="$1"
+		local identifier="$2"
+
+		validate_server "$server" || return 1
+
+		local ssr_server bin
+
+		config_get_bool ssr_server "$server" ssr_server "0"
+
+		if [ "$ssr_server" -gt 0 ]; then
+			if [ -n "$has_redir" ]; then
+				return 1
+			fi
+			bin="ssr-redir"
+		else
+			if [ -n "$has_ssr_redir" ]; then
+				_print_log "Already has ssr-redir started, ss-redir will not start."
+				return 1
+			fi
+			bin="ss-redir"
+		fi
+
+		command_exists "$bin" || return 1
+
+		local config_file
+		config_file="$(gen_config_file "$server" "$ssr_server")"
+
+		if [ -f "$config_file" ]; then
+			local params
+
+			append params "-c $config_file"
+			append params "-l $local_port"
+			append params "--mtu $mtu"
+			append params "-f /var/run/ss-redir${identifier}-${server}.pid"
+
+			if [ "$identifier" = "-udp" ]; then
+				append params "-U"
+			elif [ "$udp_relay_server" = "same" ]; then
+				append params "-u"
+			fi
+
+			sh -c "$bin $params"
+
+			if [ "$?" = "0" ]; then
+				if [ "$ssr_server" -gt 0 ]; then
+					has_ssr_redir="true"
+				fi
+				has_redir="true"
+			fi
+		fi
+	}
+
+	config_list_foreach "$cfg" main_server start_instance
+
+	start_instance "$udp_relay_server" "-udp"
 }
 
 start_local() {
-	validate_server $1 || return 0
+	local cfg="$1"
 
-	gen_config_file $1
-	$ss_local_cmd -c $(gen_config_file $1) -u $(get_arg_tfo $1) \
-		-l $(uci_get_by_type socks5_proxy local_port 1080) \
-		--mtu $(uci_get_by_type socks5_proxy mtu 1492) \
-		$reuse_port -f /var/run/ss-local-$1.pid
-}
+	local local_port mtu
 
-ss_local() {
-	if (uci_bool_by_name $1 ssr_server); then
-		is_ssr=true
-		ss_local_cmd="ssr-local"
-	else
-		is_ssr=false
-		ss_local_cmd="ss-local"
-	fi
-	command $ss_local_cmd >/dev/null 2>&1 || return 0
+	config_get local_port "$cfg" local_port 1080
+	config_get mtu "$cfg" mtu 1492
 
-	for server in $(uci_get_by_type socks5_proxy server); do
-		start_local $server
-	done
+	start_instance() {
+		local server="$1"
+
+		validate_server "$server" || return 1
+
+		local ssr_server bin
+
+		config_get_bool ssr_server "$server" ssr_server "0"
+
+		if [ "$ssr_server" -gt 0 ]; then
+			if [ -n "$has_local" ]; then
+				return 1
+			fi
+			bin="ssr-local"
+		else
+			if [ -n "$has_ssr_local" ]; then
+				_print_log "Already has ssr-local started, ss-local will not start."
+				return 1
+			fi
+			bin="ss-local"
+		fi
+
+		command_exists "$bin" || return 1
+
+		local config_file
+		config_file="$(gen_config_file "$server" "$ssr_server")"
+
+		if [ -f "config_file" ]; then
+			local params
+
+			append params "-c $config_file"
+			append params "-l $local_port"
+			append params "--mtu $mtu"
+			append params "-u"
+			append params "-f /var/run/ss-local-${server}.pid"
+
+			sh -c "$bin $params"
+			if [ "$?" = "0" ]; then
+				if [ "$ssr_server" -gt 0 ]; then
+					has_ssr_local="true"
+				fi
+				has_local="true"
+			fi
+
+		fi
+	}
+
+	config_list_foreach "$cfg" server start_instance
 }
 
 start_tunnel() {
-	validate_server $1 || return 0
-	$ss_tunnel_cmd -c $(gen_config_file $1) -u \
-		-l $(uci_get_by_type port_forward local_port 5300) \
-		-L $(uci_get_by_type port_forward destination 8.8.4.4:53) \
-		--mtu $(uci_get_by_type port_forward mtu 1492) \
-		$reuse_port -f /var/run/ss-tunnel-$1.pid
+	local cfg="$1"
+
+	local local_port mtu destination
+
+	config_get local_port "$cfg" local_port 5300
+	config_get mtu "$cfg" mtu 1492
+	config_get destination "$cfg" destination "8.8.4.4:53"
+
+	start_instance() {
+		local server="$1"
+
+		validate_server "$server" || return 1
+
+		local ssr_server bin
+
+		config_get_bool ssr_server "$server" ssr_server "0"
+
+		if [ "$ssr_server" -gt 0 ]; then
+			if [ -n "$has_tunnel" ]; then
+				return 1
+			fi
+
+			bin="ssr-tunnel"
+		else
+			if [ -n "$has_ssr_tunnel" ]; then
+				_print_log "Already has ssr-tunnel started, ss-tunnel will not start."
+				return 1
+			fi
+			bin="ss-tunnel"
+		fi
+
+		command_exists "$bin" || return 1
+
+		local config_file
+		config_file="$(gen_config_file "$server" "$ssr_server")"
+
+		if [ -f "$config_file" ]; then
+			local params
+
+			append params "-c $config_file"
+			append params "-l $local_port"
+			append params "-L $destination"
+			append params "--mtu $mtu"
+			append params "-u"
+			append params "-f /var/run/ss-tunnel-${server}.pid"
+
+			sh -c "$bin $params"
+			if [ "$?" = "0" ]; then
+				if [ "$ssr_server" -gt 0 ]; then
+					has_ssr_tunnel="true"
+				fi
+				has_tunnel="true"
+			fi
+		fi
+
+	}
+
+	config_list_foreach "$cfg" server start_instance
 }
 
-ss_tunnel() {
-	if (uci_bool_by_name $1 ssr_server); then
-		is_ssr=true
-		ss_tunnel_cmd="ssr-tunnel"
-	else
-		is_ssr=false
-		ss_tunnel_cmd="ss-tunnel"
-	fi
-	command -v $ss_tunnel_cmd >/dev/null 2>&1 || return 0
+start_proxy() {
+	local cfg="$1"
+	local type="$2"
 
-	for server in $(uci_get_by_type port_forward server); do
-		start_tunnel $server
-	done
-}
-
-start() {
-	mkdir -p /var/run /var/etc
-	ss_redir && rules
-	ss_local
-	ss_tunnel
-	rm -f $CONFIG_FILE
-}
-
-boot() {
-	local delay=$(uci_get_by_type general startup_delay 0)
-	(sleep $1 && start >/dev/null 2>&1) &
-	return 0
+	start_$type "$cfg"
 }
 
 kill_all() {
-	kill -9 $(pidof $@) >/dev/null 2>&1
+	kill -9 "$(pidof $@)" >/dev/null 2>&1
+}
+
+start() {
+	_load_config
+
+	mkdir -p /var/run /var/etc
+	config_foreach start_proxy "transparent_proxy" "redir"
+	config_foreach start_proxy "socks5_proxy" "local"
+	config_foreach start_proxy "port_forward" "tunnel"
+
+	[ -n "$has_redir" ] && rules
 }
 
 stop() {
-	/usr/bin/ss-rules -f
-	kill_all ss-redir ss-local ss-tunnel ssr-redir ssr-local ssr-tunnel
-	if [ -f /var/run/ss-plugin ]; then
-		kill_all $(sort -u /var/run/ss-plugin)
-		rm -f /var/run/ss-plugin
+	$SS_RULES -f
+
+	kill_all ss-redir ss-local ss-tunnel \
+		ssr-redir ssr-local ssr-tunnel
+
+	if [ -f "$SS_PLUGINS" ]; then
+		kill_all "$(sort -u "$SS_PLUGINS")"
+		rm -f "$SS_PLUGINS"
 	fi
+}
+
+boot() {
+	local delay
+	delay=$(uci_get_by_type_name general startup_delay 0)
+	(sleep $delay && start >/dev/null 2>&1) &
+	return 0
 }
