@@ -26,19 +26,8 @@ command_exists() {
 	command -v "$@" >/dev/null 2>&1
 }
 
-uci_get_by_type_name(){
-	local ret
-	ret="$(uci -q get ${NAME}.@${1}[-1].${2})"
-	echo ${ret:=$3}
-}
-
 _print_log() {
 	logger -st $NAME -p3 $1
-}
-
-validate_server() {
-	local cfg="$1"
-	[ -n "$cfg" ] && [ "$(uci -q get $NAME.$cfg)" = "servers" ]
 }
 
 _load_config() {
@@ -48,9 +37,23 @@ _load_config() {
 	fi
 }
 
+uci_get_by_type_option(){
+	local type="$1"
+	local option="$2"
+	local default="$3"
+
+	local ret
+	ret="$(uci -q get ${NAME}.@${type}[-1].${option})"
+	echo "${ret:=$default}"
+}
+
+validate_server() {
+	local cfg="$1"
+	[ -n "$cfg" ] && [ "$(uci -q get ${NAME}.$cfg)" = "servers" ]
+}
+
 start_rules() {
-	local self_proxy servers lan_hosts
-	local udp_relay_server extra_params
+	local servers lan_hosts
 
 	servers_cb() {
 		local cfg="$1"
@@ -81,7 +84,11 @@ start_rules() {
 	config_foreach servers_cb "servers"
 	config_foreach lan_hosts_cb "lan_hosts"
 
-	self_proxy=$(uci_get_by_type_name access_control self_proxy 1)
+	local self_proxy udp_relay_server extra_params
+
+	self_proxy=$(uci_get_by_type_option access_control self_proxy 1)
+	udp_relay_server="$(uci_get_by_type_option transparent_proxy udp_relay_server)"
+
 	case "$self_proxy" in
 		1)
 			append extra_params "-o"
@@ -91,20 +98,19 @@ start_rules() {
 			;;
 	esac
 
-	udp_relay_server=$(uci_get_by_type_name transparent_proxy udp_relay_server)
 	if [ "$udp_relay_server" = "same" ] || validate_server "$udp_relay_server"; then
 		append extra_params "-u"
 	fi
 
 	$SS_RULES \
-		-l "$(uci_get_by_type_name transparent_proxy local_port 1234)" \
-		-B "$(uci_get_by_type_name access_control wan_bp_list)" \
-		-b "$(uci_get_by_type_name access_control wan_bp_ips)" \
-		-W "$(uci_get_by_type_name access_control wan_fw_list)" \
-		-w "$(uci_get_by_type_name access_control wan_fw_ips)" \
-		-I "$(uci_get_by_type_name access_control lan_ifaces)" \
-		-d "$(uci_get_by_type_name access_control lan_target)" \
-		-e "$(uci_get_by_type_name access_control ipt_ext)" \
+		-l "$(uci_get_by_type_option transparent_proxy local_port 1234)" \
+		-B "$(uci_get_by_type_option access_control wan_bp_list)" \
+		-b "$(uci_get_by_type_option access_control wan_bp_ips)" \
+		-W "$(uci_get_by_type_option access_control wan_fw_list)" \
+		-w "$(uci_get_by_type_option access_control wan_fw_ips)" \
+		-I "$(uci_get_by_type_option access_control lan_ifaces)" \
+		-d "$(uci_get_by_type_option access_control lan_target)" \
+		-e "$(uci_get_by_type_option access_control ipt_ext)" \
 		-s "$servers" \
 		-a "$lan_hosts" \
 		"$extra_params"
@@ -112,6 +118,7 @@ start_rules() {
 
 rules() {
 	pidof ss-redir ssr-redir >/dev/null || return 0
+
 	_load_config
 	start_rules || $SS_RULES -f
 }
@@ -412,7 +419,7 @@ stop() {
 
 boot() {
 	local delay
-	delay=$(uci_get_by_type_name general startup_delay 0)
+	delay=$(uci_get_by_type_option general startup_delay 0)
 	(sleep $delay && start >/dev/null 2>&1) &
 	return 0
 }
