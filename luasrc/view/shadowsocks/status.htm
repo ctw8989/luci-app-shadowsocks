@@ -11,33 +11,60 @@
 			var tunnel_tb = document.getElementById('_tunnel_status');
 
 			if (redir_tb) {
-				if (info.ss_redir) {
-					redir_tb.innerHTML = '<%:RUNNING%> (SS)';
-				} else if (info.ssr_redir) {
-					redir_tb.innerHTML = '<%:RUNNING%> (SSR)';
-				} else {
-					redir_tb.innerHTML = '<%:NOT RUNNING%>';
+				var redir_text;
+				switch (info.redir_status) {
+					case 0:
+						redir_text = '<%:NOT RUNNING%>';
+						break;
+					case 1:
+						redir_text = '<%:RUNNING%> (SS)';
+						break;
+					case 2:
+						redir_text = '<%:RUNNING%> (SSR)';
+						break;
+					default:
+						redir_text = '<%:UNKNOWN%>';
 				}
+
+				redir_tb.innerHTML = redir_text;
 			}
 
 			if (local_tb) {
-				if (info.ss_local) {
-					local_tb.innerHTML = '<%:RUNNING%> (SS)';
-				} else if (info.ssr_local) {
-					local_tb.innerHTML = '<%:RUNNING%> (SSR)';
-				} else {
-					local_tb.innerHTML = '<%:NOT RUNNING%>';
+				var local_text;
+				switch (info.local_status) {
+					case 0:
+						local_text = '<%:NOT RUNNING%>';
+						break;
+					case 1:
+						local_text = '<%:RUNNING%> (SS)';
+						break;
+					case 2:
+						local_text = '<%:RUNNING%> (SSR)';
+						break;
+					default:
+						local_text = '<%:UNKNOWN%>';
 				}
+
+				local_tb.innerHTML = local_text;
 			}
 
 			if (tunnel_tb) {
-				if (info.ss_tunnel) {
-					tunnel_tb.innerHTML = '<%:RUNNING%> (SS)';
-				} else if (info.ssr_tunnel) {
-					tunnel_tb.innerHTML = '<%:RUNNING%> (SSR)';
-				} else {
-					tunnel_tb.innerHTML = '<%:NOT RUNNING%>';
+				var tunnel_text;
+				switch (info.tunnel_status) {
+					case 0:
+						tunnel_text = '<%:NOT RUNNING%>';
+						break;
+					case 1:
+						tunnel_text = '<%:RUNNING%> (SS)';
+						break;
+					case 2:
+						tunnel_text = '<%:RUNNING%> (SSR)';
+						break;
+					default:
+						tunnel_text = '<%:UNKNOWN%>';
 				}
+
+				tunnel_tb.innerHTML = tunnel_text;
 			}
 		}
 	);

@@ -240,7 +240,7 @@ start_redir() {
 			append params "-c $config_file"
 			append params "-l $local_port"
 			append params "--mtu $mtu"
-			append params "-f /var/run/ss-redir${identifier}-${server}.pid"
+			append params "-f /var/run/${NAME}-redir${identifier}-${server}.pid"
 
 			if [ "$identifier" = "-udp" ]; then
 				append params "-U"
@@ -306,7 +306,7 @@ start_local() {
 			append params "-l $local_port"
 			append params "--mtu $mtu"
 			append params "-u"
-			append params "-f /var/run/ss-local-${server}.pid"
+			append params "-f /var/run/${NAME}-local-${server}.pid"
 
 			sh -c "$bin $params"
 			if [ "$?" = "0" ]; then
@@ -367,7 +367,7 @@ start_tunnel() {
 			append params "-L $destination"
 			append params "--mtu $mtu"
 			append params "-u"
-			append params "-f /var/run/ss-tunnel-${server}.pid"
+			append params "-f /var/run/${NAME}-tunnel-${server}.pid"
 
 			sh -c "$bin $params"
 			if [ "$?" = "0" ]; then
@@ -410,6 +410,8 @@ stop() {
 
 	kill_all ss-redir ss-local ss-tunnel \
 		ssr-redir ssr-local ssr-tunnel
+
+	rm -f /var/run/${NAME}-{redir,local,tunnel}-*.pid
 
 	if [ -f "$SS_PLUGINS" ]; then
 		kill_all "$(sort -u "$SS_PLUGINS")"
