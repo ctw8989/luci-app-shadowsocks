@@ -1,0 +1,56 @@
+<%#
+ Copyright (C) 2017 Xingwang Liao <kuoruan@gmail.com>
+ Licensed to the public under the GNU General Public License v3.
+-%>
+
+<script type="text/javascript">//<![CDATA[
+	XHR.poll(5, '<%=url("admin/services/shadowsocks/status")%>', null,
+		function(x, info) {
+			var redir_tb = document.getElementById('_redir_status');
+			var local_tb = document.getElementById('_local_status');
+			var tunnel_tb = document.getElementById('_tunnel_status');
+
+			if (redir_tb) {
+				if (info.ss_redir) {
+					redir_tb.innerHTML = '<%:RUNNING%> (SS)';
+				} else if (info.ssr_redir) {
+					redir_tb.innerHTML = '<%:RUNNING%> (SSR)';
+				} else {
+					redir_tb.innerHTML = '<%:NOT RUNNING%>';
+				}
+			}
+
+			if (local_tb) {
+				if (info.ss_local) {
+					local_tb.innerHTML = '<%:RUNNING%> (SS)';
+				} else if (info.ssr_local) {
+					local_tb.innerHTML = '<%:RUNNING%> (SSR)';
+				} else {
+					local_tb.innerHTML = '<%:NOT RUNNING%>';
+				}
+			}
+
+			if (tunnel_tb) {
+				if (info.ss_tunnel) {
+					tunnel_tb.innerHTML = '<%:RUNNING%> (SS)';
+				} else if (info.ssr_tunnel) {
+					tunnel_tb.innerHTML = '<%:RUNNING%> (SSR)';
+				} else {
+					tunnel_tb.innerHTML = '<%:NOT RUNNING%>';
+				}
+			}
+		}
+	);
+//]]></script>
+
+<fieldset class="cbi-section" id="_status_table">
+	<legend><%:Running Status%></legend>
+
+	<fieldset class="cbi-section-node">
+		<table width="100%" cellspacing="10">
+			<tr><td width="33%"><%:Transparent Proxy%></td><td id="_redir_status"><em><%:Collecting data...%></em></td></tr>
+			<tr><td width="33%"><%:SOCKS5 Proxy%></td><td id="_local_status"><em><%:Collecting data...%></em></td></tr>
+			<tr><td width="33%"><%:Port Forward%></td><td id="_tunnel_status"><em><%:Collecting data...%></em></td></tr>
+		</table>
+	</fieldset>
+</fieldset>

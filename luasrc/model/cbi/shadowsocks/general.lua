@@ -18,23 +18,7 @@ uci:foreach(shadowsocks, "servers", function(s)
 end)
 
 m = Map(shadowsocks, "%s - %s" %{translate("ShadowSocks"), translate("General Settings")})
-m.template = "shadowsocks/general"
-
--- [[ Running Status ]]--
-s = m:section(TypedSection, "general", translate("Running Status"))
-s.anonymous = true
-
-o = s:option(DummyValue, "_redir_status", translate("Transparent Proxy"))
-o.value = "<span id=\"_redir_status\">%s</span>" %{translate("Collecting data...")}
-o.rawhtml = true
-
-o = s:option(DummyValue, "_local_status", translate("SOCKS5 Proxy"))
-o.value = "<span id=\"_local_status\">%s</span>" %{translate("Collecting data...")}
-o.rawhtml = true
-
-o = s:option(DummyValue, "_tunnel_status", translate("Port Forward"))
-o.value = "<span id=\"_tunnel_status\">%s</span>" %{translate("Collecting data...")}
-o.rawhtml = true
+m:append(Template("shadowsocks/status"))
 
 s = m:section(TypedSection, "general", translate("Global Settings"))
 s.anonymous = true
