@@ -17,6 +17,8 @@ SS_PLUGINS=/var/run/ss-plugin
 
 if [ -r /usr/share/libubox/jshn.sh ]; then
 	. /usr/share/libubox/jshn.sh
+elif [ -r /lib/functions/jshn.sh ]; then
+	. /lib/functions/jshn.sh
 else
 	logger -st $NAME -p3 "Please install jshn first."
 	exit 1
