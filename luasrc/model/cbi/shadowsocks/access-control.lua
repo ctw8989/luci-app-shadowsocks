@@ -90,9 +90,10 @@ s.addremove = true
 s.anonymous = true
 
 o = s:option(Value, "host", translate("Host"))
-luci.ip.neighbors({family = 4}, function(neighbor)
-	if neighbor.reachable then
-		o:value(neighbor.dest:string(), "%s (%s)" %{neighbor.dest:string(), neighbor.mac})
+luci.ip.neighbors({family = 4}, function(n)
+	if n.reachable then
+		local ip = n.dest:string()
+		o:value(ip, "%s (%s)" %{ip, n.mac})
 	end
 end)
 o.datatype = "ip4addr"
