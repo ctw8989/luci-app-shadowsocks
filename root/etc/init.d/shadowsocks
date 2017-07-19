@@ -29,7 +29,7 @@ command_exists() {
 }
 
 _print_log() {
-	logger -st $NAME -p3 $1
+	logger -p daemon.info -t "$NAME" "$1"
 }
 
 _load_config() {
