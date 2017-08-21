@@ -26,7 +26,7 @@ s.anonymous = true
 o = s:option(Value, "startup_delay", translate("Startup Delay"))
 o:value(0, translate("Not enabled"))
 for _, v in ipairs({5, 10, 15, 25, 40}) do
-	o:value(v, translate("%u seconds") %{v})
+	o:value(v, translatef("%u seconds", v))
 end
 o.datatype = "uinteger"
 o.default = 0
@@ -39,6 +39,7 @@ s.anonymous = true
 o = s:option(DynamicList, "main_server", translate("Main Server"))
 o:value("nil", translate("Disable"))
 for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+o.default = "nil"
 o.rmempty = false
 
 o = s:option(ListValue, "udp_relay_server", translate("UDP-Relay Server"))
@@ -58,8 +59,8 @@ o.default = 1234
 o.rmempty = false
 
 o = s:option(Value, "mtu", translate("Override MTU"))
-o.default = 1492
 o.datatype = "range(296,9200)"
+o.default = 1492
 o.rmempty = false
 
 -- [[ SOCKS5 Proxy ]]--
@@ -69,6 +70,7 @@ s.anonymous = true
 o = s:option(DynamicList, "server", translate("Server"))
 o:value("nil", translate("Disable"))
 for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+o.default = nil
 o.rmempty = false
 
 o = s:option(Value, "local_port", translate("Local Port"))
@@ -77,8 +79,8 @@ o.default = 1080
 o.rmempty = false
 
 o = s:option(Value, "mtu", translate("Override MTU"))
-o.default = 1492
 o.datatype = "range(296,9200)"
+o.default = 1492
 o.rmempty = false
 
 -- [[ Port Forward ]]--
@@ -88,6 +90,7 @@ s.anonymous = true
 o = s:option(DynamicList, "server", translate("Server"))
 o:value("nil", translate("Disable"))
 for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+o.default = "nil"
 o.rmempty = false
 
 o = s:option(Value, "local_port", translate("Local Port"))
@@ -100,8 +103,8 @@ o.default = "8.8.4.4:53"
 o.rmempty = false
 
 o = s:option(Value, "mtu", translate("Override MTU"))
-o.default = 1492
 o.datatype = "range(296,9200)"
+o.default = 1492
 o.rmempty = false
 
 return m

@@ -74,12 +74,12 @@ start_rules() {
 		config_get_bool is_enable "$cfg" enable "0"
 
 		if [ "$is_enable" -gt 0 ]; then
-			local host_type host
+			local host_type macaddr
 
 			config_get host_type "$cfg" type
-			config_get host "$cfg" host
+			config_get macaddr "$cfg" macaddr
 
-			append lan_hosts "${host_type},${host}"
+			append lan_hosts "${host_type},${macaddr}"
 		fi
 	}
 
